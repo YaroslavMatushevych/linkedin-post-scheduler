@@ -5,9 +5,8 @@ GEMINI_API_KEY = os.environ["GEMINI_API_KEY"]
 TELEGRAM_BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
 TELEGRAM_CHAT_ID = os.environ["TELEGRAM_CHAT_ID"]
 LINKEDIN_ACCESS_TOKEN = os.environ["LINKEDIN_ACCESS_TOKEN"]
-LINKEDIN_PERSON_URN = os.environ["LINKEDIN_PERSON_URN"]  # e.g. "ACoAA..."
-UPSTASH_REDIS_REST_URL = os.environ["UPSTASH_REDIS_REST_URL"]
-UPSTASH_REDIS_REST_TOKEN = os.environ["UPSTASH_REDIS_REST_TOKEN"]
+LINKEDIN_PERSON_URN = os.environ["LINKEDIN_PERSON_URN"]
+GH_PAT = os.environ["GH_PAT"]  # used for Gist state storage
 
 # How many top HN stories to consider
 HN_CANDIDATE_POOL = 60
