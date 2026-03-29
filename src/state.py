@@ -1,6 +1,6 @@
 """
-State management via a private GitHub Gist.
-No extra accounts or services needed — uses your existing GitHub token.
+State management via Upstash Redis REST API.
+Stores draft posts and user interaction state.
 """
 import json
 import uuid
@@ -8,65 +8,41 @@ from datetime import datetime, timezone
 
 import requests
 
-from src.config import GH_PAT
+from src.config import UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN
 
-GIST_DESCRIPTION = "linkedin-post-scheduler-state"
-GIST_FILENAME = "state.json"
-_EMPTY_STATE = {"drafts": {}, "user_state": {}}
-
-_headers = {"Authorization": f"token {GH_PAT}", "Accept": "application/vnd.github+json"}
+DRAFT_TTL = 60 * 60 * 24 * 7  # 7 days
 
 
-def _find_gist_id() -> str | None:
-    resp = requests.get("https://api.github.com/gists", headers=_headers, timeout=10)
-    for g in resp.json():
-        if g.get("description") == GIST_DESCRIPTION:
-            return g["id"]
-    return None
+def _headers() -> dict:
+    return {"Authorization": f"Bearer {UPSTASH_REDIS_REST_TOKEN}"}
 
 
-def _create_gist() -> str:
+def _set(key: str, value: str, ex: int | None = None) -> None:
+    cmd = ["SET", key, value]
+    if ex:
+        cmd += ["EX", str(ex)]
+    requests.post(UPSTASH_REDIS_REST_URL, json=cmd, headers=_headers(), timeout=5)
+
+
+def _get(key: str) -> str | None:
     resp = requests.post(
-        "https://api.github.com/gists",
-        headers=_headers,
-        json={
-            "description": GIST_DESCRIPTION,
-            "public": False,
-            "files": {GIST_FILENAME: {"content": json.dumps(_EMPTY_STATE)}},
-        },
-        timeout=10,
+        UPSTASH_REDIS_REST_URL,
+        json=["GET", key],
+        headers=_headers(),
+        timeout=5,
     )
-    return resp.json()["id"]
+    return resp.json().get("result")
 
 
-def _get_gist_id() -> str:
-    gist_id = _find_gist_id()
-    return gist_id or _create_gist()
-
-
-def _read_state() -> dict:
-    gist_id = _get_gist_id()
-    resp = requests.get(f"https://api.github.com/gists/{gist_id}", headers=_headers, timeout=10)
-    content = resp.json()["files"][GIST_FILENAME]["content"]
-    return json.loads(content)
-
-
-def _write_state(state: dict) -> None:
-    gist_id = _get_gist_id()
-    requests.patch(
-        f"https://api.github.com/gists/{gist_id}",
-        headers=_headers,
-        json={"files": {GIST_FILENAME: {"content": json.dumps(state, indent=2)}}},
-        timeout=10,
-    )
+def _del(key: str) -> None:
+    requests.post(UPSTASH_REDIS_REST_URL, json=["DEL", key], headers=_headers(), timeout=5)
 
 
 # ── Draft management ──────────────────────────────────────────────────────────
 
 def save_draft(post_text: str, article: dict, telegram_message_id: int, chat_id: str) -> str:
     draft_id = str(uuid.uuid4())[:8]
-    state = _read_state()
-    state["drafts"][draft_id] = {
+    draft = {
         "id": draft_id,
         "text": post_text,
         "article": article,
@@ -75,48 +51,46 @@ def save_draft(post_text: str, article: dict, telegram_message_id: int, chat_id:
         "status": "pending",
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
-    _write_state(state)
+    _set(f"draft:{draft_id}", json.dumps(draft), ex=DRAFT_TTL)
     return draft_id
 
 
 def get_draft(draft_id: str) -> dict | None:
-    return _read_state()["drafts"].get(draft_id)
+    raw = _get(f"draft:{draft_id}")
+    return json.loads(raw) if raw else None
 
 
 def update_draft_text(draft_id: str, new_text: str) -> None:
-    state = _read_state()
-    if draft_id in state["drafts"]:
-        state["drafts"][draft_id]["text"] = new_text
-        _write_state(state)
+    draft = get_draft(draft_id)
+    if draft:
+        draft["text"] = new_text
+        _set(f"draft:{draft_id}", json.dumps(draft), ex=DRAFT_TTL)
 
 
 def mark_draft_posted(draft_id: str) -> None:
-    state = _read_state()
-    if draft_id in state["drafts"]:
-        state["drafts"][draft_id]["status"] = "posted"
-        _write_state(state)
+    draft = get_draft(draft_id)
+    if draft:
+        draft["status"] = "posted"
+        _set(f"draft:{draft_id}", json.dumps(draft), ex=DRAFT_TTL)
 
 
 def mark_draft_skipped(draft_id: str) -> None:
-    state = _read_state()
-    if draft_id in state["drafts"]:
-        state["drafts"][draft_id]["status"] = "skipped"
-        _write_state(state)
+    draft = get_draft(draft_id)
+    if draft:
+        draft["status"] = "skipped"
+        _set(f"draft:{draft_id}", json.dumps(draft), ex=DRAFT_TTL)
 
 
-# ── User interaction state (edit flow) ───────────────────────────────────────
+# ── User interaction state (for edit flow) ────────────────────────────────────
 
 def set_user_editing(user_id: int, draft_id: str) -> None:
-    state = _read_state()
-    state["user_state"][str(user_id)] = {"action": "editing", "draft_id": draft_id}
-    _write_state(state)
+    _set(f"user_state:{user_id}", json.dumps({"action": "editing", "draft_id": draft_id}), ex=3600)
 
 
 def get_user_state(user_id: int) -> dict | None:
-    return _read_state()["user_state"].get(str(user_id))
+    raw = _get(f"user_state:{user_id}")
+    return json.loads(raw) if raw else None
 
 
 def clear_user_state(user_id: int) -> None:
-    state = _read_state()
-    state["user_state"].pop(str(user_id), None)
-    _write_state(state)
+    _del(f"user_state:{user_id}")
