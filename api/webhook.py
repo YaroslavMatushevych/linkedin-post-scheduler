@@ -118,8 +118,15 @@ class handler(BaseHTTPRequestHandler):
                 handle_callback_query(update["callback_query"])
             elif "message" in update:
                 handle_message(update["message"])
-        except Exception:
-            pass
+        except Exception as e:
+            import traceback
+            try:
+                send_text(
+                    os.environ.get("TELEGRAM_CHAT_ID", ""),
+                    f"❌ Webhook crash:\n{type(e).__name__}: {e}\n\n{traceback.format_exc()[-500:]}",
+                )
+            except Exception:
+                pass
 
         self.send_response(200)
         self.end_headers()
