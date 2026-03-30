@@ -92,7 +92,11 @@ def mark_message_done(chat_id: str, message_id: int) -> None:
 
 
 def answer_callback(callback_query_id: str, text: str = "") -> None:
-    _api("answerCallbackQuery", {"callback_query_id": callback_query_id, "text": text})
+    # Non-fatal — callback queries can expire during cold starts; we still process the action
+    try:
+        _api("answerCallbackQuery", {"callback_query_id": callback_query_id, "text": text})
+    except Exception:
+        pass
 
 
 def send_text(chat_id: str, text: str) -> None:

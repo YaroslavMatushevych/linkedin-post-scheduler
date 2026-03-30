@@ -77,6 +77,7 @@ def handle_callback_query(cq: dict) -> None:
         try:
             mark_draft_skipped(draft_id)
             mark_message_done(chat_id, message_id)
+            send_text(chat_id, "⏭ Draft skipped.")
         except Exception as e:
             send_text(chat_id, f"❌ Skip failed: {e}")
 
