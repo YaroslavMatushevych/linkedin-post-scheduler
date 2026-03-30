@@ -20,7 +20,7 @@ from src.state import (
     get_user_state,
     clear_user_state,
 )
-from src.telegram_sender import answer_callback, send_text, edit_message
+from src.telegram_sender import answer_callback, send_text, edit_message, mark_message_done
 from src.linkedin_api import post_to_linkedin
 from src.generator import generate_post
 
@@ -48,17 +48,19 @@ def handle_callback_query(cq: dict) -> None:
         try:
             post_to_linkedin(draft["text"])
             mark_draft_posted(draft_id)
-            send_text(chat_id, f"✅ Posted to LinkedIn! Draft `{draft_id}`")
+            mark_message_done(chat_id, message_id, "posted")
+            send_text(chat_id, "✅ Posted to LinkedIn!")
         except Exception as e:
             send_text(chat_id, f"❌ LinkedIn post failed: {e}")
 
     elif action == "edit":
         set_user_editing(user_id, draft_id)
         answer_callback(cq_id)
+        current_preview = draft["text"][:600] + ("…" if len(draft["text"]) > 600 else "")
         send_text(
             chat_id,
-            "✏️ Send me the new post text as a reply to this message.\n\n"
-            "_Send /cancel to abort editing._",
+            f"✏️ Current draft:\n\n{current_preview}\n\n"
+            "Send me the new post text now. Send /cancel to abort.",
         )
 
     elif action == "regen":
@@ -71,9 +73,13 @@ def handle_callback_query(cq: dict) -> None:
             send_text(chat_id, f"❌ Regeneration failed: {e}")
 
     elif action == "skip":
-        mark_draft_skipped(draft_id)
-        answer_callback(cq_id, "Skipped.")
-        send_text(chat_id, f"⏭ Draft `{draft_id}` skipped.")
+        try:
+            mark_draft_skipped(draft_id)
+            mark_message_done(chat_id, message_id, "skipped")
+            answer_callback(cq_id, "Skipped.")
+        except Exception as e:
+            answer_callback(cq_id, "Error skipping.")
+            send_text(chat_id, f"❌ Skip failed: {e}")
 
 
 def handle_message(message: dict) -> None:

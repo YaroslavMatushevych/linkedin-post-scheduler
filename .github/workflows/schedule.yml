@@ -2,9 +2,10 @@ name: Generate & Send LinkedIn Post
 
 on:
   schedule:
-    # Monday and Thursday at 08:00 UTC
-    - cron: "0 8 * * 1"
-    - cron: "0 8 * * 4"
+    # Monday and Thursday at 13:00 UTC (= 14:00 London GMT / 14:00 London BST+1)
+    # BST (Mar–Oct): 13 UTC = 14:00 London. GMT (Nov–Mar): 13 UTC = 13:00 London.
+    - cron: "0 13 * * 1"
+    - cron: "0 13 * * 4"
   workflow_dispatch:
 
 jobs:

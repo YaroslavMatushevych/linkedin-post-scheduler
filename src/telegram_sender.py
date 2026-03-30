@@ -50,17 +50,18 @@ def send_draft(post_text: str, draft_id: str, article: dict) -> int:
 
 
 def edit_message(chat_id: str, message_id: int, new_text: str, draft_id: str) -> None:
-    """Update existing Telegram message after text edit."""
+    """Update existing Telegram message after text edit or regeneration."""
     preview = new_text[:800] + ("…" if len(new_text) > 800 else "")
-    message = f"📝 Draft (edited)\n\n{preview}"
+    message = f"📝 Draft (updated)\n\n{preview}"
 
     keyboard = {
         "inline_keyboard": [
             [
                 {"text": "🚀 Post to LinkedIn", "callback_data": f"post:{draft_id}"},
-                {"text": "✏️ Edit again", "callback_data": f"edit:{draft_id}"},
+                {"text": "✏️ Edit", "callback_data": f"edit:{draft_id}"},
             ],
             [
+                {"text": "🔄 Regenerate", "callback_data": f"regen:{draft_id}"},
                 {"text": "❌ Skip", "callback_data": f"skip:{draft_id}"},
             ],
         ]
@@ -73,6 +74,18 @@ def edit_message(chat_id: str, message_id: int, new_text: str, draft_id: str) ->
             "message_id": message_id,
             "text": message,
             "reply_markup": keyboard,
+        },
+    )
+
+
+def mark_message_done(chat_id: str, message_id: int, label: str) -> None:
+    """Remove buttons from a message and append a status label."""
+    _api(
+        "editMessageReplyMarkup",
+        {
+            "chat_id": chat_id,
+            "message_id": message_id,
+            "reply_markup": {"inline_keyboard": []},
         },
     )
 
