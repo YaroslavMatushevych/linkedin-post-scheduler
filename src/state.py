@@ -42,7 +42,7 @@ def save_draft(post_text: str, article: dict, telegram_message_id: int, chat_id:
     return draft_id
 
 
-def get_draft(draft_id: str) -> dict | None:
+def get_draft(draft_id: str):
     raw = _client().get(f"draft:{draft_id}")
     return json.loads(raw) if raw else None
 
@@ -78,7 +78,7 @@ def set_user_editing(user_id: int, draft_id: str) -> None:
     )
 
 
-def get_user_state(user_id: int) -> dict | None:
+def get_user_state(user_id: int):
     raw = _client().get(f"user_state:{user_id}")
     return json.loads(raw) if raw else None
 
