@@ -14,7 +14,7 @@ def post_to_linkedin(text: str) -> str:
         "X-Restli-Protocol-Version": "2.0.0",
     }
     payload = {
-        "author": f"urn:li:person:{LINKEDIN_PERSON_URN}",
+        "author": f"urn:li:member:{LINKEDIN_PERSON_URN}",
         "lifecycleState": "PUBLISHED",
         "specificContent": {
             "com.linkedin.ugc.ShareContent": {
