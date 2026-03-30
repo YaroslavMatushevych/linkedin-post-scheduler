@@ -1,6 +1,7 @@
 """
 Sends draft posts to Telegram with inline action buttons.
 """
+import html
 import requests
 from src.config import TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
 
@@ -15,14 +16,18 @@ def _api(method: str, payload: dict) -> dict:
     return resp.json()
 
 
+def _escape(text: str) -> str:
+    return html.escape(text)
+
+
 def send_draft(post_text: str, draft_id: str, article: dict) -> int:
     """Send the draft post to Telegram. Returns the message_id."""
     preview = post_text[:800] + ("…" if len(post_text) > 800 else "")
-    source_line = f"\n\n🔗 Source: [{article['title']}]({article['url']})"
+    source_line = f'\n\n🔗 Source: <a href="{article["url"]}">{_escape(article["title"])}</a>'
 
     message = (
-        f"📝 *New LinkedIn draft ready*\n\n"
-        f"{preview}"
+        f"📝 <b>New LinkedIn draft ready</b>\n\n"
+        f"{_escape(preview)}"
         f"{source_line}"
     )
 
@@ -44,7 +49,7 @@ def send_draft(post_text: str, draft_id: str, article: dict) -> int:
         {
             "chat_id": TELEGRAM_CHAT_ID,
             "text": message,
-            "parse_mode": "Markdown",
+            "parse_mode": "HTML",
             "reply_markup": keyboard,
             "disable_web_page_preview": True,
         },
@@ -55,7 +60,7 @@ def send_draft(post_text: str, draft_id: str, article: dict) -> int:
 def edit_message(chat_id: str, message_id: int, new_text: str, draft_id: str) -> None:
     """Update existing Telegram message after text edit."""
     preview = new_text[:800] + ("…" if len(new_text) > 800 else "")
-    message = f"📝 *Draft (edited)*\n\n{preview}"
+    message = f"📝 <b>Draft (edited)</b>\n\n{_escape(preview)}"
 
     keyboard = {
         "inline_keyboard": [
@@ -75,7 +80,7 @@ def edit_message(chat_id: str, message_id: int, new_text: str, draft_id: str) ->
             "chat_id": chat_id,
             "message_id": message_id,
             "text": message,
-            "parse_mode": "Markdown",
+            "parse_mode": "HTML",
             "reply_markup": keyboard,
         },
     )
@@ -86,4 +91,4 @@ def answer_callback(callback_query_id: str, text: str = "") -> None:
 
 
 def send_text(chat_id: str, text: str) -> None:
-    _api("sendMessage", {"chat_id": chat_id, "text": text, "parse_mode": "Markdown"})
+    _api("sendMessage", {"chat_id": chat_id, "text": text})
