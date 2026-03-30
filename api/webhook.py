@@ -43,24 +43,24 @@ def handle_callback_query(cq: dict) -> None:
         answer_callback(cq_id, "⚠️ Draft expired or not found.")
         return
 
+    # Always answer the callback FIRST — Telegram requires this within a few seconds
     if action == "post":
         answer_callback(cq_id, "Posting to LinkedIn…")
         try:
             post_to_linkedin(draft["text"])
             mark_draft_posted(draft_id)
-            mark_message_done(chat_id, message_id, "posted")
+            mark_message_done(chat_id, message_id)
             send_text(chat_id, "✅ Posted to LinkedIn!")
         except Exception as e:
             send_text(chat_id, f"❌ LinkedIn post failed: {e}")
 
     elif action == "edit":
-        set_user_editing(user_id, draft_id)
         answer_callback(cq_id)
-        current_preview = draft["text"][:600] + ("…" if len(draft["text"]) > 600 else "")
+        set_user_editing(user_id, draft_id)
+        current_preview = draft["text"][:1000] + ("…" if len(draft["text"]) > 1000 else "")
         send_text(
             chat_id,
-            f"✏️ Current draft:\n\n{current_preview}\n\n"
-            "Send me the new post text now. Send /cancel to abort.",
+            f"✏️ Current draft:\n\n{current_preview}\n\nSend me the updated text now. Send /cancel to abort.",
         )
 
     elif action == "regen":
@@ -73,12 +73,11 @@ def handle_callback_query(cq: dict) -> None:
             send_text(chat_id, f"❌ Regeneration failed: {e}")
 
     elif action == "skip":
+        answer_callback(cq_id, "Skipped.")
         try:
             mark_draft_skipped(draft_id)
-            mark_message_done(chat_id, message_id, "skipped")
-            answer_callback(cq_id, "Skipped.")
+            mark_message_done(chat_id, message_id)
         except Exception as e:
-            answer_callback(cq_id, "Error skipping.")
             send_text(chat_id, f"❌ Skip failed: {e}")
 
 

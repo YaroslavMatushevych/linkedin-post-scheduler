@@ -17,11 +17,12 @@ def _api(method: str, payload: dict) -> dict:
 
 def send_draft(post_text: str, draft_id: str, article: dict) -> int:
     """Send the draft post to Telegram. Returns the message_id."""
-    preview = post_text[:800] + ("…" if len(post_text) > 800 else "")
+    # Telegram max is 4096 chars; leave room for the header/footer (~120 chars)
+    preview = post_text[:3900] + ("…" if len(post_text) > 3900 else "")
     message = (
-        f"📝 New LinkedIn draft ready\n\n"
+        f"📝 New LinkedIn draft\n\n"
         f"{preview}\n\n"
-        f"🔗 {article['title']}\n{article['url']}"
+        f"🔗 Source: {article['title']}"
     )
 
     keyboard = {
@@ -51,8 +52,8 @@ def send_draft(post_text: str, draft_id: str, article: dict) -> int:
 
 def edit_message(chat_id: str, message_id: int, new_text: str, draft_id: str) -> None:
     """Update existing Telegram message after text edit or regeneration."""
-    preview = new_text[:800] + ("…" if len(new_text) > 800 else "")
-    message = f"📝 Draft (updated)\n\n{preview}"
+    preview = new_text[:3900] + ("…" if len(new_text) > 3900 else "")
+    message = f"📝 LinkedIn draft\n\n{preview}"
 
     keyboard = {
         "inline_keyboard": [
@@ -78,8 +79,8 @@ def edit_message(chat_id: str, message_id: int, new_text: str, draft_id: str) ->
     )
 
 
-def mark_message_done(chat_id: str, message_id: int, label: str) -> None:
-    """Remove buttons from a message and append a status label."""
+def mark_message_done(chat_id: str, message_id: int) -> None:
+    """Remove inline buttons from a message."""
     _api(
         "editMessageReplyMarkup",
         {
