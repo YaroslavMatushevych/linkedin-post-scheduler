@@ -109,18 +109,19 @@ class handler(BaseHTTPRequestHandler):
     def do_POST(self):
         length = int(self.headers.get("Content-Length", 0))
         body = self.rfile.read(length)
-        self.send_response(200)
-        self.end_headers()
 
+        # Process BEFORE sending response — Vercel kills the process after end_headers()
         try:
             update = json.loads(body)
+            if "callback_query" in update:
+                handle_callback_query(update["callback_query"])
+            elif "message" in update:
+                handle_message(update["message"])
         except Exception:
-            return
+            pass
 
-        if "callback_query" in update:
-            handle_callback_query(update["callback_query"])
-        elif "message" in update:
-            handle_message(update["message"])
+        self.send_response(200)
+        self.end_headers()
 
     def log_message(self, *args):
         pass  # suppress default HTTP logging
