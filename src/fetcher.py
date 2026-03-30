@@ -14,7 +14,7 @@ def _is_relevant(text: str) -> bool:
 def fetch_hn_best() -> list[dict]:
     """Fetch top HN stories, return those that are relevant."""
     ids = requests.get(
-        "https://hacker-news.firebaseio.com/v0/beststories.json", timeout=10
+        "https://hacker-news.firebaseio.com/v0/topstories.json", timeout=10
     ).json()[:HN_CANDIDATE_POOL]
 
     stories = []
