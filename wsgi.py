@@ -108,6 +108,17 @@ def app(environ, start_response):
     path = environ.get("PATH_INFO", "")
     method = environ.get("REQUEST_METHOD", "")
 
+    # Debug: verify env vars are loaded and Telegram works
+    if path == "/debug" and method == "GET":
+        env_keys = [k for k in ["TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID", "REDIS_HOST", "REDIS_PASSWORD", "GEMINI_API_KEY"] if os.environ.get(k)]
+        try:
+            send_text(os.environ.get("TELEGRAM_CHAT_ID", ""), f"✅ wsgi.py alive. Env vars: {env_keys}")
+            msg = f"OK: {env_keys}"
+        except Exception as e:
+            msg = f"send_text failed: {e}"
+        start_response("200 OK", [("Content-Type", "text/plain")])
+        return [msg.encode()]
+
     if path == "/api/webhook" and method == "POST":
         length = int(environ.get("CONTENT_LENGTH", 0) or 0)
         body = environ["wsgi.input"].read(length)
