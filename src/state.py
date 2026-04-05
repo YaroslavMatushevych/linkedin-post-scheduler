@@ -26,7 +26,7 @@ def _client() -> redis.Redis:
 
 # ── Draft management ──────────────────────────────────────────────────────────
 
-def save_draft(post_text: str, article: dict, telegram_message_id: int, chat_id: str) -> str:
+def save_draft(post_text: str, article: dict, telegram_message_id: int, chat_id: str, post_type: str = "standard") -> str:
     draft_id = str(uuid.uuid4())[:8]
     draft = {
         "id": draft_id,
@@ -35,6 +35,7 @@ def save_draft(post_text: str, article: dict, telegram_message_id: int, chat_id:
         "telegram_message_id": telegram_message_id,
         "chat_id": chat_id,
         "status": "pending",
+        "post_type": post_type,  # "standard", "news", or "thoughts"
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     r = _client()

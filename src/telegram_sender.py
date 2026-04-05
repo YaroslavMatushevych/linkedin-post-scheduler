@@ -15,6 +15,56 @@ def _api(method: str, payload: dict) -> dict:
     return resp.json()
 
 
+def send_breaking_news_options(article: dict, post_news: str, post_thoughts: str) -> int:
+    """
+    Send a breaking news message with TWO post options to choose from.
+    User can pick between "News Post" or "Post with Thoughts".
+    Returns the message_id.
+    """
+    # Telegram max is 4096 chars; leave room for the header/footer (~150 chars)
+    preview_news = post_news[:1800] + ("…" if len(post_news) > 1800 else "")
+    preview_thoughts = post_thoughts[:1800] + ("…" if len(post_thoughts) > 1800 else "")
+    
+    message = (
+        f"🚨 BREAKING NEWS DETECTED\n\n"
+        f"📰 {article['title']}\n"
+        f"Source: {article['source']}\n\n"
+        f"─────────────────────────\n"
+        f"OPTION 1: Simple News Post\n"
+        f"─────────────────────────\n"
+        f"{preview_news}\n\n"
+        f"─────────────────────────\n"
+        f"OPTION 2: Post with Personal Thoughts\n"
+        f"─────────────────────────\n"
+        f"{preview_thoughts}\n\n"
+        f"Choose an option below or regenerate."
+    )
+
+    keyboard = {
+        "inline_keyboard": [
+            [
+                {"text": "📰 Post News", "callback_data": f"post_news:{article['source']}:{article['title'][:20]}"},
+                {"text": "💭 Post Thoughts", "callback_data": f"post_thoughts:{article['source']}:{article['title'][:20]}"},
+            ],
+            [
+                {"text": "🔄 Regenerate Both", "callback_data": f"regen_both:{article['source']}:{article['title'][:20]}"},
+                {"text": "❌ Skip", "callback_data": f"skip:{article['source']}:{article['title'][:20]}"},
+            ],
+        ]
+    }
+
+    result = _api(
+        "sendMessage",
+        {
+            "chat_id": TELEGRAM_CHAT_ID,
+            "text": message,
+            "reply_markup": keyboard,
+            "disable_web_page_preview": True,
+        },
+    )
+    return result["result"]["message_id"]
+
+
 def send_draft(post_text: str, draft_id: str, article: dict) -> int:
     """Send the draft post to Telegram. Returns the message_id."""
     # Telegram max is 4096 chars; leave room for the header/footer (~120 chars)
